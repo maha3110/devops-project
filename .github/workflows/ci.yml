@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 14
+
+    - name: Install dependencies
+      run: |
+        cd angular-app
+        npm install
+
+    - name: Build Angular app
+      run: |
+        cd angular-app
+        npm run build --prod
+
+    - name: Set up Java
+      uses: actions/setup-java@v2
+      with:
+        distribution: 'adopt'
+        java-version: '11'
+
+    - name: Build Spring Boot app
+      run: |
+        cd spring-boot-app
+        ./mvnw clean install
+
+    - name: Run tests
+      run: |
+        cd spring-boot-app
+        ./mvnw test

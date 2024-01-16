@@ -1,0 +1,65 @@
+pipeline {
+    agent {
+        dockerfile {
+            filename 'Dockerfile.jenkins'
+        }
+    }
+    environment {
+        DOCKER_REGISTRY = 'maha-registry'
+        ANGULAR_IMAGE = "${DOCKER_REGISTRY}/angular_app"
+        SPRINGBOOT_IMAGE = "${DOCKER_REGISTRY}/springboot_app"
+    }
+    stages {
+        stage('Build Angular') {
+            steps {
+                script {
+                    docker.build(ANGULAR_IMAGE, "-f Dockerfile.angular .")
+                }
+            }
+        }
+        
+        stage('Build Spring Boot') {
+            steps {
+                script {
+                    docker.build(SPRINGBOOT_IMAGE, "-f Dockerfile.springboot .")
+                }
+            }
+        }
+        
+        stage('Push Docker Images') {
+            steps {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
+                        docker.image(ANGULAR_IMAGE).push()
+                        docker.image(SPRINGBOOT_IMAGE).push()
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    sh "kubectl apply -f deployment-angular.yaml"
+                    sh "kubectl apply -f deployment-springboot.yaml"
+                }
+            }
+        }
+        
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    sh "mvn sonar:sonar -Dsonar.host.url=http://sonarqube:9000 -Dsonar.projectKey=my-angular-project"
+                }
+            }
+        }
+        
+        stage('Publish to Nexus') {
+            steps {
+                script {
+                    sh "mvn deploy -Dmaven.test.skip=true -DrepositoryId=nexus -Durl=http://nexus:8081/repository/maven-releases"
+                }
+            }
+        }
+    }
+}

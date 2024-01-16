@@ -1,0 +1,25 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Set up kubectl
+      uses: azure/setup-kubectl@v1
+      with:
+        installKubectl: true
+
+    - name: Deploy to Kubernetes
+      run: |
+        kubectl apply -f deployment-angular.yaml
+        kubectl apply -f deployment-springboot.yaml
